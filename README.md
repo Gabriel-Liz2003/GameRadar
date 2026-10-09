@@ -1,108 +1,87 @@
-# 🎮 GameRadar — Jogos físicos novos e usados
+# GameRadar — somente jogos físicos Nintendo Switch e Switch 2
 
-Aplicativo PWA para Android e desktop, com monitoramento por **fontes autorizadas**, filtros, favoritos, detecção de anúncios novos e quedas de preço. Desenvolvido com **Python 3.11+ e JavaScript sem dependências externas**.
+**Aplicativo:** https://gabriel-liz2003.github.io/GameRadar/
 
+O radar busca anúncios de **jogos físicos** de Nintendo Switch e Switch 2, novos, usados e de condição não informada. Descarta consoles, controles, acessórios, DLCs digitais e contas de jogos. É um PWA instalável no Android, com coleta agendada pelo GitHub Actions e alertas via ntfy.
 
-## Novidades da versão atual
+**Status de verdade:** código e automação estão implementados; **as lojas só enviarão anúncios depois que suas integrações autorizadas estiverem conectadas**. O projeto não pesquisa todos os anúncios de todas as lojas de forma anônima. O painel mostra um aviso de configuração enquanto não há fontes reais.
 
-- Interface com identidade visual inspirada nos consoles Nintendo: cores claras, vermelho, filtros horizontais e cards de mídia física.
-- Consoles atuais e retrô: Switch 2, Switch, PS5, PS4, PS3, PS2, PS Vita, PSP, Xbox Series/One/360, 3DS, DS, Wii U, Wii, GameCube, Game Boy Advance/Color, N64, SNES, NES e Mega Drive.
-- Cada anúncio acompanha `first_price`, `lowest_price` e até 25 eventos de `price_history`; o app mostra quedas desde o primeiro preço conhecido.
-- Fontes que entregam um **catálogo completo** podem declarar `complete_snapshot: true` para marcar como indisponíveis anúncios que saíram da listagem. Não use com RSS de novidades ou feeds parciais.
-- `mercadolivre_items`: lista de até 100 IDs de anúncios já conhecidos, mediante `ML_ACCESS_TOKEN` autorizado. Isso **não habilita busca geral**.
-- Coleta não grava estados vazios repetidos quando nenhuma fonte está configurada.
+## 1. Ativar a busca automática de jogos físicos na Shopee
 
-### Situação das integrações
+O conector Shopee Affiliate GraphQL já está no backend e habilitado em `config/sources.json`. Ele pesquisa jogos de Switch e Switch 2 em seis termos e filtra títulos para reter apenas jogos físicos. Busca apenas **ofertas disponíveis para a API de Afiliados**, não o catálogo inteiro da Shopee.
 
-**Nenhuma loja está configurada por padrão**. Isso é intencional: não fornecemos páginas raspadas nem acessos não autorizados. Para monitoramento real, obtenha um feed de produtos permitido por uma loja/parceiro ou credenciais de API com as permissões apropriadas. O monitor não transforma URLs comuns de busca da OLX, Amazon, Shopee ou Mercado Livre em APIs.
+**Requisitos:**
+1. Ter conta no Programa de Afiliados da Shopee Brasil: https://affiliate.shopee.com.br/
+2. Solicitar e receber **acesso à Open API de Afiliados**, que pode depender de aprovação. Login Shopee comum não basta.
+3. Obter **App ID** e **App Secret**. Não coloque credenciais em arquivos públicos.
+4. No GitHub, abra https://github.com/Gabriel-Liz2003/GameRadar/settings/secrets/actions e use **New repository secret** para criar:
+   - `SHOPEE_APP_ID` — App ID
+   - `SHOPEE_APP_SECRET` — App Secret
+5. Execute **Actions → GameRadar • monitor → Run workflow**, na branch main: https://github.com/Gabriel-Liz2003/GameRadar/actions/workflows/monitor.yml
+6. Quando a Shopee responder à consulta, os jogos aparecerão no aplicativo. **A primeira coleta é silenciosa**, para não alertar sobre centenas de anúncios antigos. Depois, novos anúncios e quedas de preço entram na fila de alertas.
 
-Enquanto não houver fontes, a página exibe explicitamente que não há dados reais, com exemplos opcionais claramente fictícios.
+**Atenção:** não tenho credenciais e não posso solicitar o acesso em seu nome. A API pode retornar erro 10035 (acesso não aprovado), 10030 (limite) ou 10020 (assinatura inválida). Erros aparecem no diagnóstico do monitor.
 
-## Funcionalidades prontas
+Documentação baseada na API pública (**site de terceiros, confirme com a Shopee**): https://www.affiliateshopee.com.br/documentacao
+Explorer: https://open-api.affiliate.shopee.com.br/explorer
 
-- Painel em português responsivo para instalação como app Android.
-- Buscar por título, filtrar consoles, condição, preço, região e fonte; ordenar e favoritar (no navegador).
-- Coleta JSON / RSS / Atom **autorizados pelo fornecedor**; inventário de vendedores Mercado Livre que deram permissão OAuth ao aplicativo.
-- Registro histórico com ID estável, uma primeira coleta silenciosa por fonte, alertas de novos anúncios e quedas significativas.
-- Notificações via ntfy com **um digest por rodada** e fila que tenta novamente quando falha.
-- CI, workflows de coleta programada (uma vez por hora) e publicação opcional pelo GitHub Pages.
-- Modo demonstração explícito com três anúncios fictícios; os dados reais iniciam vazios.
+O arquivo `config/sources.json` já contém os termos:
+- jogo nintendo switch 2
+- jogo nintendo switch
+- mario kart switch
+- pokemon switch
+- zelda switch
+- kirby switch
 
-**NÃO** há busca pública geral implementada na Amazon, Mercado Livre, Shopee ou OLX. Os conectores dependem de permissões e contratos: não usamos scraping nem APIs não documentadas. "Todos os jogos" significa **todos os jogos de console reconhecidos nos feeds cadastrados**, não o catálogo inteiro da internet. Alguns anúncios podem ser classificados erroneamente conforme o título.
+Você pode ampliar os termos (até 12) e configurar o número de páginas (até cinco). O monitor não promete cobrir todo o catálogo e pode ter resultados parciais conforme a API.
 
-## Rodar localmente
+## 2. Ativar notificações no Android
 
-    python -m unittest discover -s tests -v
-    python -m gameradar.core collect
-    cp data/feed.json site/data/feed.json
-    python -m http.server 8000 --directory site
+1. Instale o app **ntfy** (https://ntfy.sh/) no Android.
+2. Gere um tópico longo e aleatório no Termux: `python -c "import secrets;print('gameradar-'+secrets.token_urlsafe(24))"`
+3. Inscreva-se nesse tópico dentro do ntfy.
+4. Em https://github.com/Gabriel-Liz2003/GameRadar/settings/secrets/actions, cadastre o secret `NTFY_TOPIC` com esse nome.
+5. Em `config/rules.json`, ajuste filtros de console, preço, palavras e quedas mínimas. O site permite exportar o JSON para substituir no GitHub, mas a mudança do painel **não atualiza automaticamente os alertas do backend**.
 
-Abra http://localhost:8000 no computador ou navegador Termux. Não é necessário instalar bibliotecas extras no Python.
+Uma única notificação resume até dez ofertas e indica quantas adicionais existem. O envio falhou? O sistema guarda a fila para outra tentativa; duplicação ainda é possível se a execução interromper após o envio e antes da confirmação. Sem tópico ntfy, a fila é esvaziada sem notificar.
 
-## Configurar fontes reais
+**Privacidade:** o serviço público ntfy.sh não oferece privacidade automática para tópicos adivinháveis; use tópico aleatório e não o compartilhe.
 
-Edite config/sources.json. Exemplo de estrutura **não funcional**, apenas para configurar uma loja que permita exportar seus anúncios:
+## 3. Mercado Livre, OLX, Amazon e lojas
 
-    {
-      "feeds": [
-        {
-          "id": "loja_parceira",
-          "name": "Loja Parceira",
-          "url": "https://loja-parceira.example/feeds/games.json",
-          "format": "json",
-          "enabled": true,
-          "currency": "BRL",
-          "condition_hint": "new"
-        }
-      ],
-      "mercadolivre_sellers": []
-    }
+- **Mercado Livre:** o backend permite `mercadolivre_sellers` (IDs de vendedores autorizados) e `mercadolivre_items` (IDs de produtos acompanhados), usando `ML_ACCESS_TOKEN` no Actions Secret. A autorização OAuth é obrigatória e o token expira; a aplicação **não renova refresh tokens sozinha** e não tem busca geral irrestrita do marketplace. Docs: https://developers.mercadolivre.com.br/pt_br/itens-e-buscas
+- **OLX:** a documentação oficial de sua API atende principalmente ao gerenciamento de anúncios do próprio vendedor; sem busca pública ampla integrada: https://developers.olx.com.br/anuncio/api/home.html
+- **Amazon:** a Creators API exige conta de Associados, aprovação e credenciais; **não está integrada**: https://affiliate-program.amazon.com/creatorsapi/docs/en-us/introduction
+- **Lojas com feeds autorizados:** adicione uma entrada em `feeds` com URL HTTPS, formato `json`, `rss` ou `atom`, ID, nome, e indicação de plataforma somente se o feed for especificamente de Switch/Switch 2. O backend suporta JSON com `items` contendo `id`, `title`, `price`, `url`, `condition`, `image`, `location` e `shipping`. **Não use páginas HTML como feeds**.
 
-Cada item JSON deve ter id, title, price, url HTTPS; opcionalmente image, condition ("new" ou "used"), location, shipping e currency. Aceita objeto com items[] ou array. O título deve identificar Nintendo Switch, Switch 2, PS4, PS5, Xbox One ou Xbox Series; se não identificar, use platform_hint na fonte. IDs precisam permanecer estáveis. Feeds RSS/Atom precisam ter preço em g:price/g:sale_price ou texto como R$ 199,90 na descrição. Limite por feed 1500 registros por execução.
+Modelo ilustrativo de feed JSON (URL e produto de exemplo, não são reais):
 
-Para fontes protegidas, use a propriedade token_env com o **nome** de uma variável de ambiente secreta (Bearer token); configure esse Secret no GitHub, nunca salve o token no JSON.
+~~~json
+{"feeds":[{"id":"loja-parceira","name":"Loja Parceira","url":"https://parceiro.example/catalogo.json","format":"json","enabled":true,"currency":"BRL","complete_snapshot":false}]}
+~~~
 
-### Mercado Livre
+Não marque `complete_snapshot:true` em fontes de resultados parciais ou páginas de buscas. Isso marcaria como indisponíveis jogos que ainda existem.
 
-A API oficial permite listar inventário de **vendedores autorizados** por /users/{seller_id}/items/search e /items/bulk. Coloque um ou mais IDs numéricos em mercadolivre_sellers e configure o secret ML_ACCESS_TOKEN. Se tiver uma lista de anúncios específicos já identificados, coloque seus IDs no campo mercadolivre_items; a consulta desses itens depende da mesma autorização e pode ser bloqueada pela política do seu aplicativo. **O token expira em cerca de 6 horas e este projeto não renova automaticamente a sessão OAuth**. Para serviço contínuo, é necessário implantar fluxo seguro de OAuth e renovação de refresh token com rotação. Não tente substituir por /sites/MLB/search: busca ampla pode estar restrita a apps autorizados.
+## 4. Como funciona
 
-### OLX / Shopee / Amazon
+- Reconhece apenas as plataformas `switch` e `switch2`; filtra consoles, acessórios e itens digitais a partir de títulos. Anúncios vagos podem ser removidos para evitar falsos positivos.
+- Se um anúncio de jogo Switch não menciona a plataforma, configure `platform_hint` **somente num feed que garanta essa plataforma**.
+- A condição não confirmada é exibida como **Não informada**, e incluída na busca e nos alertas por padrão. A Shopee não entrega condição no exemplo da API de afiliados.
+- Histórico por anúncio inclui primeiro preço, menor preço observado e até 25 mudanças. A primeira coleta da fonte não envia alertas antigos.
+- O código salva anúncios, condições e links públicos em `data/feed.json` e estado da fila em `data/state.json`. O GitHub Pages publica só o feed, nunca os Secrets.
+- Execução aproximadamente horária (GitHub Actions pode atrasar). O preço mostrado não inclui frete quando a API não fornece a informação.
+- Se nenhum resultado aparecer, cheque as fontes em `data/feed.json` (campo `health` com `ok`, `needs_setup` ou `error`).
+- O objetivo é custo zero dentro dos limites gratuitos de GitHub Actions/Pages e API/ntfy. Provedores podem impor limites próprios.
 
-Sem conexão de busca geral. APIs da OLX para anúncios se destinam ao anunciante; Shopee e Amazon requerem acesso apropriado. Use feeds parceiros com permissão expressa. Não inclua páginas HTML ou endpoints internos para contornar restrições.
+## 5. Rodar e testar localmente
 
-## Notificações no Android
+~~~sh
+python -m unittest discover -s tests -v
+python -m gameradar.core collect
+cp data/feed.json site/data/feed.json
+python -m http.server 8000 --directory site
+~~~
 
-1. Instale o ntfy (https://ntfy.sh/) no seu aparelho.
-2. Gere tópico difícil de adivinhar no Termux/PC com: python -c "import secrets;print('gameradar-'+secrets.token_urlsafe(24))"
-3. Inscreva-se nesse tópico no ntfy.
-4. No GitHub: Settings → Secrets and variables → Actions → New repository secret, cadastre NTFY_TOPIC com esse tópico.
-5. Em config/rules.json edite consoles, condições, preço máximo, palavras incluídas/excluídas, filtro de fontes e mínimos de queda. A interface permite **exportar** o JSON com as seleções, mas não altera diretamente o servidor.
+Python 3.11+ e navegador moderno bastam, sem bibliotecas Python extras.
 
-Tópicos públicos ntfy não são privados se o nome vazar. Se nenhuma fonte/NTFY_TOPIC está configurado, não haverá notificações. Primeiro scan de cada fonte é silencioso. A fila é persistida antes do envio e confirmada depois; interrupções neste intervalo **podem causar reenvios**. Os alertas são enviados em lotes de até 10 ofertas resumidas por mensagem, com contagem das demais. ntfy público possui limites de uso.
-
-## Publicar no GitHub Pages (PWA instalável no Android)
-
-O repositório **já está público**; a publicação do site depende de habilitar Pages uma vez.
-
-1. No celular, abra [Settings → Pages](https://github.com/Gabriel-Liz2003/GameRadar/settings/pages).
-2. Em **Build and deployment → Source**, selecione **GitHub Actions**. Não crie workflow por modelo: o projeto já tem o arquivo `.github/workflows/monitor.yml`.
-3. Em [Actions → GameRadar • monitor](https://github.com/Gabriel-Liz2003/GameRadar/actions/workflows/monitor.yml), selecione **Run workflow → main → Run workflow**. O monitor detecta Pages habilitado e publica a interface automaticamente.
-4. Após o deploy bem-sucedido, abra o link informado em Settings → Pages. Endereço habitual: https://gabriel-liz2003.github.io/GameRadar/ (confirme que já existe antes de compartilhar).
-5. No Chrome/Brave Android, menu → **Instalar aplicativo / Adicionar à tela inicial**.
-
-**Não é necessário criar `ENABLE_PAGES` nem guardar tokens para publicar o site.** Pages fica desativado enquanto a conta não selecionar a fonte de publicação; o monitor detecta isso e ignora o deploy sem impedir as coletas.
-
-O monitor é agendado para uma execução por hora (o GitHub pode atrasar ou suspender horários). Apenas as fontes autorizadas configuradas produzirão ofertas reais; enquanto vazias, o app exibirá estado vazio e um botão de exemplos fictícios. Os dados enviados ao site ficarão públicos.
-
-## Segurança e arquitetura
-
-- config/sources.json: feeds aprovados / vendedores autorizados
-- config/rules.json: filtros de notificações automáticas
-- gameradar/core.py: coleta, normalização, histórico, filtros, fila, notificação ntfy
-- data/state.json: estado persistente (não editar) e data/feed.json: snapshots públicos
-- site/: interface PWA estática, sem tokens
-- .github/workflows/monitor.yml: coleta + push de dados + deploy opcional
-- .github/workflows/test.yml: testes e validação
-- tests/: testes determinísticos sem rede
-
-A interface não possui autenticação de usuário nem backend interativo: preferências e favoritos ficam apenas no dispositivo, enquanto a automação roda nas configurações do repositório. A coleta conserva até 15 mil IDs históricos e exibe até 1.500 registros.
+**Segurança:** não publique App ID Secret, tokens, identificadores ntfy ou dados privados em código/issues públicos. As ofertas no site serão públicas; confirme preços, autenticidade e condições no anúncio original antes de comprar.
