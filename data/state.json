@@ -1,1 +1,7 @@
-{"records":{},"initialized_sources":[],"pending":[],"alert_log":[]}
+{
+  "records": {},
+  "initialized_sources": [],
+  "pending": [],
+  "alert_log": [],
+  "last_check": "2026-10-09T14:49:01+00:00"
+}
