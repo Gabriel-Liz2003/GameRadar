@@ -1,5 +1,5 @@
 "use strict";
-const PLATFORMS={switch2:"Switch 2",switch:"Switch",ps5:"PS5",ps4:"PS4",xbox_series:"Xbox Series",xbox_one:"Xbox One"};
+const PLATFORMS={switch2:"Switch 2",switch:"Switch",ps5:"PS5",ps4:"PS4",ps3:"PS3",ps2:"PS2",ps_vita:"PS Vita",psp:"PSP",xbox_series:"Xbox Series",xbox_one:"Xbox One",xbox360:"Xbox 360","3ds":"3DS",ds:"DS",wiiu:"Wii U",wii:"Wii",gamecube:"GameCube",gba:"GBA",gbc:"Game Boy",n64:"N64",snes:"SNES",nes:"NES",mega_drive:"Mega Drive"};
 const EXAMPLES=[
 {id:"demo-1",title:"Pokémon Legends: Z-A Nintendo Switch 2 lacrado — exemplo",platform:"switch2",condition:"new",price:289.90,source:"LOJA FICTÍCIA",source_id:"demo",url:"https://example.com",image:null,location:"Brasil",first_seen:new Date().toISOString()},
 {id:"demo-2",title:"Zelda Tears of the Kingdom Nintendo Switch usado — exemplo",platform:"switch",condition:"used",price:189.90,source:"CLASSIFICADO FICTÍCIO",source_id:"demo",url:"https://example.com",image:null,location:"Santa Catarina",first_seen:new Date().toISOString()},
@@ -10,6 +10,7 @@ const values={platforms:Object.keys(PLATFORMS),search:"",location:"",source:"",m
 function stored(key,def){try{return JSON.parse(localStorage.getItem(key))||def}catch{return def}}
 let filters={...values,...stored("gr-filter-v1",{})};
 if(!Array.isArray(filters.platforms))filters.platforms=Object.keys(PLATFORMS);
+if(filters.platforms.length===6 && ["switch2","switch","ps5","ps4","xbox_series","xbox_one"].every(p=>filters.platforms.includes(p)))filters.platforms=Object.keys(PLATFORMS);
 let favorites=stored("gr-favorites-v1",[]);
 if(!Array.isArray(favorites))favorites=[];
 let feed={offers:[],sources_ok:0,sources_configured:0,health:[],updated_at:null};
@@ -115,15 +116,21 @@ function card(item){
  const seller=document.createElement("div");seller.className="seller";seller.textContent=(item.source||"Fonte")+(item.location?" · "+item.location:"");
  const priceEl=document.createElement("div");priceEl.className="price";priceEl.textContent=brl(item.price);
  const shipping=document.createElement("div");shipping.className="shipping";shipping.textContent=item.shipping!=null?"Frete: "+brl(item.shipping):"Frete a consultar";
+ const trend=document.createElement("div");trend.className="price-trend";
+ const base=Number(item.first_price);
+ if(Number.isFinite(base)&&base>Number(item.price)&&base>0){
+   const diff=Math.round(100*(base-Number(item.price))/base);
+   trend.textContent="↓ "+diff+"% desde o 1º registro no radar";
+ }
  const bottom=document.createElement("div");bottom.className="card-bottom";
  const tm=document.createElement("span");tm.className="date";tm.textContent=dateAgo(item.first_seen||item.last_seen);
  const link=document.createElement("a");link.className="deal-link";link.textContent=demo?"Somente exemplo ↗":"Ver anúncio ↗";
  if(!demo && /^https:\/\//.test(item.url||"")){link.href=item.url;link.target="_blank";link.rel="noopener noreferrer"}
  else{link.href="#";link.onclick=e=>{e.preventDefault();modal("Exemplo fictício","Este anúncio aparece apenas para demonstrar a interface. Não existe oferta real associada.")}};
- bottom.append(tm,link);body.append(plat,h,seller,priceEl,shipping,bottom);article.append(picture,body);return article;
+ bottom.append(tm,link);body.append(plat,h,seller,priceEl,shipping);if(trend.textContent)body.append(trend);body.append(bottom);article.append(picture,body);return article;
 }
 function render(){
- const offers=demo?EXAMPLES:(feed.offers||[]);
+ const offers=demo?EXAMPLES:(feed.offers||[]).filter(o=>o.available!==false);
  q("#allCount").textContent=offers.length;
  q("#lowest").textContent=offers.length?brl(Math.min(...offers.map(o=>o.price))):"—";
  q("#sourcesOk").textContent=demo?"—":String(feed.sources_ok||0);
@@ -152,7 +159,7 @@ function render(){
  q("#more").hidden=visible.length<=limit;
  q("#empty").hidden=visible.length>0;
  q("#emptyTitle").textContent=offers.length?"Nenhum jogo com esses filtros":"Seu radar está vazio";
- q("#emptyText").textContent=offers.length?"Experimente limpar os filtros ou mudar a plataforma.":"Conecte fontes de mídia física autorizadas para receber anúncios reais. É possível ver um exemplo visual.";
+q("#emptyText").textContent=offers.length?"Experimente limpar os filtros ou escolher outra plataforma.":"Cadastre fontes autorizadas em config/sources.json. Assim que o monitor coletar anúncios, eles aparecerão aqui. Você pode ver uma demonstração enquanto isso.";
  q("#showDemo").textContent=demo?"Voltar aos dados reais":"Ver exemplo visual ↗";
  q("#toggleDemo").textContent=demo?"← Dados reais":"Ver exemplo";
 }
