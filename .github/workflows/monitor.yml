@@ -40,6 +40,7 @@ jobs:
           git add data/state.json data/feed.json
           if ! git diff --cached --quiet; then
             git commit -m "data: monitorar preços e anúncios"
+            git pull --rebase origin main
             git push
           fi
       - name: Notificar com digest (1 notificação por coleta)
@@ -53,6 +54,7 @@ jobs:
           git add data/state.json
           if ! git diff --cached --quiet; then
             git commit -m "data: confirmar alertas enviados"
+            git pull --rebase origin main
             git push
           fi
       - name: Detectar GitHub Pages sem variável manual
