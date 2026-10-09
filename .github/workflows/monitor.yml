@@ -1,6 +1,13 @@
 name: "GameRadar • monitor"
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "gameradar/**"
+      - "config/**"
+      - ".github/workflows/monitor.yml"
   schedule:
     - cron: "23 * * * *"
 permissions:
@@ -14,6 +21,8 @@ jobs:
   collect:
     runs-on: ubuntu-latest
     timeout-minutes: 12
+    outputs:
+      pages_ready: ${{ steps.pages.outputs.enabled }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -46,18 +55,37 @@ jobs:
             git commit -m "data: confirmar alertas enviados"
             git push
           fi
+      - name: Detectar GitHub Pages sem variável manual
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          status=$(curl --silent --show-error --output /dev/null --write-out "%{http_code}" \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/pages")
+          if [ "$status" = "200" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "GitHub Pages está habilitado."
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Ative GitHub Pages em Settings -> Pages -> Source: GitHub Actions."
+          fi
       - name: Montar PWA
-        if: vars.ENABLE_PAGES == 'true'
+        if: steps.pages.outputs.enabled == 'true'
         run: |
           mkdir -p public/data
           cp -a site/. public/
           cp data/feed.json public/data/feed.json
-      - uses: actions/upload-pages-artifact@v3
-        if: vars.ENABLE_PAGES == 'true'
+      - name: Preparar GitHub Pages
+        if: steps.pages.outputs.enabled == 'true'
+        uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        if: steps.pages.outputs.enabled == 'true'
         with:
           path: public
   deploy:
-    if: vars.ENABLE_PAGES == 'true'
+    if: needs.collect.outputs.pages_ready == 'true'
     needs: collect
     runs-on: ubuntu-latest
     environment:
