@@ -103,6 +103,13 @@ def is_physical_game(title):
             return False
         if re.search(r"\bconsol[e]?\b",title,re.I) and not re.search(r"\b(?:jogo|game|cartucho|m[ií]dia\s*f[ií]sica)\b",title,re.I):
             return False
+    # Evitar que um anúncio genérico "Nintendo Switch 2" seja entendido como jogo.
+    suffix=re.sub(r"\b(?:nintendo\s*)?switch\s*2\b|\b(?:nintendo\s*)?switch\b"," ",title,flags=re.I)
+    suffix=re.sub(r"\b(?:original|novo|nova|usado|usada|lacrado|lacrada|"
+                  r"vers[aã]o|modelo|nintendo|jogo|game|para|do|da|de|em|"
+                  r"com|semi\s*novo|edi[cç][aã]o|f[ií]sico|f[ií]sica|"
+                  r"m[ií]dia|cart[aã]o|card|key)\b"," ",suffix,flags=re.I)
+    if len(re.sub(r"\W+","",suffix))<4:return False
     if re.search(r"\b(?:256|128|64|32)\s*gb\b",title,re.I) and not re.search(
         r"\b(?:jogo|cartucho|m[ií]dia\s*f[ií]sica)\b",title,re.I
     ):

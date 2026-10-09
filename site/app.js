@@ -7,18 +7,18 @@ const EXAMPLES=[
 const q=s=>document.querySelector(s);
 const values={platforms:Object.keys(PLATFORMS),search:"",location:"",source:"",maxPrice:"",newCheck:true,usedCheck:true,unknownCheck:true,sort:"recent",onlyFavorites:false};
 function stored(key,def){try{return JSON.parse(localStorage.getItem(key))||def}catch{return def}}
-let filters={...values,...stored("gr-filter-v1",{})};
+let filters={...values,...stored("gr-filter-switch-v2",{})};
 // Migração das preferências anteriores que continham PS/Xbox/retrô.
 filters.platforms=Array.isArray(filters.platforms)?filters.platforms.filter(p=>Object.hasOwn(PLATFORMS,p)):Object.keys(PLATFORMS);
 if(filters.platforms.length===0)filters.platforms=Object.keys(PLATFORMS);
-filters.unknownCheck=true;
+
 
 let favorites=stored("gr-favorites-v1",[]);
 if(!Array.isArray(favorites))favorites=[];
 let feed={offers:[],sources_ok:0,sources_configured:0,health:[],updated_at:null};
 let demo=false,limit=36;
 const brl=n=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(n)||0);
-function persist(){try{localStorage.setItem("gr-filter-v1",JSON.stringify(filters));localStorage.setItem("gr-favorites-v1",JSON.stringify(favorites))}catch{}}
+function persist(){try{localStorage.setItem("gr-filter-switch-v2",JSON.stringify(filters));localStorage.setItem("gr-favorites-v1",JSON.stringify(favorites))}catch{}}
 function dateAgo(s){
  if(!s)return "Sem data";
  const h=Math.floor((Date.now()-new Date(s).getTime())/3600000);
