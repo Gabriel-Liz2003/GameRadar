@@ -1,0 +1,69 @@
+name: "GameRadar • monitor"
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 * * * *"
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: gameradar-hourly
+  cancel-in-progress: false
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Coletar anúncios autorizados
+        run: python -m gameradar.core collect
+        continue-on-error: true
+        env:
+          ML_ACCESS_TOKEN: \${{ secrets.ML_ACCESS_TOKEN }}
+      - name: Persistir anúncios e fila ANTES de notificar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/state.json data/feed.json
+          if ! git diff --cached --quiet; then
+            git commit -m "data: monitorar preços e anúncios"
+            git push
+          fi
+      - name: Notificar com digest (1 notificação por coleta)
+        run: python -m gameradar.core notify
+        continue-on-error: true
+        env:
+          NTFY_TOPIC: \${{ secrets.NTFY_TOPIC }}
+      - name: Persistir confirmação dos alertas
+        if: always()
+        run: |
+          git add data/state.json
+          if ! git diff --cached --quiet; then
+            git commit -m "data: confirmar alertas enviados"
+            git push
+          fi
+      - name: Montar PWA
+        if: vars.ENABLE_PAGES == 'true'
+        run: |
+          mkdir -p public/data
+          cp -a site/. public/
+          cp data/feed.json public/data/feed.json
+      - uses: actions/upload-pages-artifact@v3
+        if: vars.ENABLE_PAGES == 'true'
+        with:
+          path: public
+  deploy:
+    if: vars.ENABLE_PAGES == 'true'
+    needs: collect
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: \${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar GameRadar
+        id: deployment
+        uses: actions/deploy-pages@v4

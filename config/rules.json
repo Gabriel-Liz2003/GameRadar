@@ -1,0 +1,25 @@
+{
+  "platforms": [
+    "switch2",
+    "switch",
+    "ps5",
+    "ps4",
+    "xbox_series",
+    "xbox_one"
+  ],
+  "conditions": [
+    "new",
+    "used"
+  ],
+  "sources": [],
+  "max_price": null,
+  "include_keywords": [],
+  "exclude_keywords": [
+    "somente caixa",
+    "sem jogo"
+  ],
+  "notify_new": true,
+  "notify_drop": true,
+  "min_drop_percent": 10,
+  "min_drop_brl": 15
+}

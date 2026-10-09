@@ -1,0 +1,18 @@
+{
+  "name": "GameRadar — Monitor de mídia física",
+  "short_name": "GameRadar",
+  "description": "Radar de jogos físicos novos e usados",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#101326",
+  "theme_color": "#101326",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

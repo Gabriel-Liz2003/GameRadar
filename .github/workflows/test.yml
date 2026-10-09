@@ -1,0 +1,30 @@
+name: "GameRadar • testes"
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "gameradar/**"
+      - "tests/**"
+      - "site/**"
+      - ".github/workflows/**"
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Testes Python
+        run: python -m unittest discover -s tests -v
+      - name: Validar JavaScript
+        run: node --check site/app.js && node --check site/sw.js
+      - name: Validar JSON
+        run: |
+          python -m json.tool config/sources.json > /dev/null
+          python -m json.tool config/rules.json > /dev/null
+          python -m json.tool site/manifest.webmanifest > /dev/null

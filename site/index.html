@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101326"><meta name="description" content="GameRadar: radar de jogos físicos novos e usados com alertas de preço.">
+<title>GameRadar — Radar de mídia física</title>
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="manifest" href="./manifest.webmanifest"><link rel="stylesheet" href="./styles.css">
+</head><body>
+<div class="shell">
+<header class="topbar">
+  <a class="brand" href="./" aria-label="GameRadar início"><span class="brandicon">✳</span><span>GAME<span class="accent">RADAR</span><small>MEDIA TRACKER</small></span></a>
+  <div class="top-actions"><span id="feedStatus" class="status">Carregando...</span><button id="reload" class="icon-button" aria-label="Atualizar anúncios" title="Atualizar anúncios">↻</button></div>
+</header>
+<main>
+<section class="hero">
+  <div class="hero-content">
+    <span class="eyebrow"><i></i> CAÇADOR DE OFERTAS · MÍDIA FÍSICA</span>
+    <h1>Seu próximo jogo.<br><em>Um preço melhor.</em></h1>
+    <p>Encontre jogos novos e usados em fontes conectadas. Compare anúncios, acompanhe preços e não perca oportunidades.</p>
+    <div class="hero-buttons"><a class="primary" href="#results">Explorar anúncios <span>↗</span></a><button class="secondary" id="about">Como funciona ↗</button></div>
+    <div class="tiny">Fontes oficiais/autorizadas · Sem scraping · Sem anúncios inventados</div>
+  </div>
+  <div class="hero-graphic" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="controller"><div class="dpad">＋</div><div class="screen"></div><div class="buttons">●<br>●</div></div><div class="hero-notice">◎ NOVO ANÚNCIO</div><span class="spark s1">✧</span><span class="spark s2">✦</span></div>
+</section>
+<section class="stats" aria-label="Estatísticas">
+ <article><span>ANÚNCIOS REGISTRADOS</span><strong id="allCount">0</strong><small>Nas fontes autorizadas</small><b>▦</b></article>
+ <article><span>MENOR PREÇO</span><strong id="lowest">—</strong><small>Valor sem frete</small><b>↘</b></article>
+ <article><span>FONTES ATIVAS</span><strong id="sourcesOk">0</strong><small id="lastUpdate">Aguardando</small><b>◉</b></article>
+</section>
+<div id="notice" class="notice" role="status"></div>
+<section id="results" class="results">
+ <div class="title-row"><div><div class="eyebrow subtle">DESCUBRA OPORTUNIDADES</div><h2>Radar de ofertas <span id="resultCount"></span></h2></div><label class="switch"><input type="checkbox" id="onlyFavorites"><span>☆ Só favoritos</span></label></div>
+ <div class="layout">
+  <aside class="filters" aria-label="Filtros">
+    <div class="filter-head"><h3>Filtros</h3><button id="reset" class="text-btn">Limpar</button></div>
+    <label class="lab" for="search">JOGO / PALAVRA-CHAVE</label><input id="search" type="search" placeholder="Pokémon, Zelda, Mario..." autocomplete="off">
+    <div class="sep"></div><div class="lab">CONSOLE</div><div id="platforms" class="chips"></div>
+    <div class="sep"></div><div class="lab">CONDIÇÃO</div><label class="check"><input id="newCheck" type="checkbox"> Novo / lacrado</label><label class="check"><input id="usedCheck" type="checkbox"> Usado / seminovo</label><label class="check"><input id="unknownCheck" type="checkbox"> Não informado</label>
+    <div class="sep"></div><label class="lab" for="maxPrice">PREÇO MÁXIMO (R$)</label><input id="maxPrice" type="number" min="0" step="1" placeholder="Sem limite" inputmode="numeric">
+    <label class="lab spaced" for="location">REGIÃO</label><input id="location" type="search" placeholder="SC, Lages, Brasil..." autocomplete="off">
+    <label class="lab spaced" for="source">LOJA / FONTE</label><select id="source"><option value="">Todas as fontes</option></select>
+    <p class="fine">Filtros desta tela são locais. Alertas automáticos usam regras no GitHub.</p><button id="rules" class="wide-secondary">Exportar regras de alertas ↗</button>
+  </aside>
+  <div class="offers">
+    <div class="sortline"><span id="resultLabel">Carregando...</span><label>Ordenar <select id="sort"><option value="recent">Mais recentes</option><option value="low">Menor preço</option><option value="high">Maior preço</option><option value="name">Nome A-Z</option></select></label></div>
+    <div class="cards" id="cards"></div>
+    <div id="empty" class="empty" hidden><div class="empty-icon">◈</div><h3 id="emptyTitle">Nenhuma oferta por enquanto</h3><p id="emptyText">As ofertas reais aparecem quando alguma fonte autorizada é conectada.</p><button id="showDemo" class="primary">Ver exemplo visual ↗</button></div>
+    <button id="more" class="more" hidden>Mostrar mais anúncios ↓</button>
+  </div>
+ </div>
+</section>
+<section class="bottom"><div class="bottom-icon">✧</div><div><strong>Uma notificação. Muitas oportunidades.</strong><p>O GameRadar agrupa os alertas por execução para não lotar seu celular. Verifique vendedor, frete e condição antes de comprar.</p></div><button id="notifications" class="wide-secondary">Configurar notificações ↗</button></section>
+</main>
+<footer><span>✳ <strong>GAME<span class="accent">RADAR</span></strong></span><small>PWA 1.0 · Código aberto para integrar fontes autorizadas</small></footer>
+</div>
+<dialog id="modal"><div class="dialog"><button class="close" id="close" aria-label="Fechar">✕</button><div class="dialog-icon">✳</div><h2 id="modalTitle">GameRadar</h2><p id="modalText"></p><pre id="modalCode" hidden></pre><button id="copy" class="primary" hidden>Copiar JSON</button><button id="ok" class="wide-secondary">Entendi</button></div></dialog>
+<script src="./app.js" defer></script></body></html>
