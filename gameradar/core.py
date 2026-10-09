@@ -201,6 +201,12 @@ def process(state,observed,ok,rules,at=None):
 def collect(root=ROOT):
     root=Path(root); sources=read(root/"config/sources.json",{"feeds":[],"mercadolivre_sellers":[]})
     rules=read(root/"config/rules.json",{});state=read(root/"data/state.json",{})
+    # Sem fontes cadastradas, não gerar commits de atualização vazios a cada hora.
+    if not sources.get("feeds") and not sources.get("mercadolivre_sellers") and not sources.get("mercadolivre_items"):
+        empty={"version":1,"updated_at":None,"sources_configured":0,"sources_ok":0,"health":[],"offers":[]}
+        if read(root/"data/feed.json",None)!=empty: write(root/"data/feed.json",empty)
+        print("GameRadar pronto. Nenhuma fonte autorizada conectada.")
+        return 0
     observed=[];ok=[];health=[]
     for s in sources.get("feeds",[]):
         if not s.get("enabled",True): continue
