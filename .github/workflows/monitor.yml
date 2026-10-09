@@ -23,7 +23,7 @@ jobs:
         run: python -m gameradar.core collect
         continue-on-error: true
         env:
-          ML_ACCESS_TOKEN: \${{ secrets.ML_ACCESS_TOKEN }}
+          ML_ACCESS_TOKEN: ${{ secrets.ML_ACCESS_TOKEN }}
       - name: Persistir anúncios e fila ANTES de notificar
         run: |
           git config user.name "github-actions[bot]"
@@ -37,7 +37,7 @@ jobs:
         run: python -m gameradar.core notify
         continue-on-error: true
         env:
-          NTFY_TOPIC: \${{ secrets.NTFY_TOPIC }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
       - name: Persistir confirmação dos alertas
         if: always()
         run: |
@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: \${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Publicar GameRadar
         id: deployment
