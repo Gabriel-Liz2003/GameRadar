@@ -64,17 +64,19 @@ Sem conexão de busca geral. APIs da OLX para anúncios se destinam ao anunciant
 
 Tópicos públicos ntfy não são privados se o nome vazar. Se nenhuma fonte/NTFY_TOPIC está configurado, não haverá notificações. Primeiro scan de cada fonte é silencioso. A fila é persistida antes do envio e confirmada depois; interrupções neste intervalo **podem causar reenvios**. Os alertas são enviados em lotes de até 10 ofertas resumidas por mensagem, com contagem das demais. ntfy público possui limites de uso.
 
-## Publicar no GitHub Pages (PWA instalável no celular)
+## Publicar no GitHub Pages (PWA instalável no Android)
 
-Este repositório foi criado **privado**. O GitHub Pages em contas GitHub Free requer repositório **público**; GitHub Pro/Team/Enterprise pode hospedar sites de repositórios privados, mas o site pode continuar publicamente acessível. Não mudamos a visibilidade por segurança.
+O repositório **já está público**; a publicação do site depende de habilitar Pages uma vez.
 
-1. Com uma conta/plano elegível, entre em Settings → Pages → Build and deployment → Source: GitHub Actions.
-2. Em Settings → Secrets and variables → Actions → Variables, crie a variável ENABLE_PAGES igual a true.
-3. Em Actions → GameRadar • monitor → Run workflow, execute manualmente.
-4. Verifique o endereço gerado na aba Pages; normalmente https://gabriel-liz2003.github.io/GameRadar/.
-5. Abra HTTPS no Chrome/Brave Android → menu → Instalar aplicativo / Adicionar à tela inicial.
+1. No celular, abra [Settings → Pages](https://github.com/Gabriel-Liz2003/GameRadar/settings/pages).
+2. Em **Build and deployment → Source**, selecione **GitHub Actions**. Não crie workflow por modelo: o projeto já tem o arquivo `.github/workflows/monitor.yml`.
+3. Em [Actions → GameRadar • monitor](https://github.com/Gabriel-Liz2003/GameRadar/actions/workflows/monitor.yml), selecione **Run workflow → main → Run workflow**. O monitor detecta Pages habilitado e publica a interface automaticamente.
+4. Após o deploy bem-sucedido, abra o link informado em Settings → Pages. Endereço habitual: https://gabriel-liz2003.github.io/GameRadar/ (confirme que já existe antes de compartilhar).
+5. No Chrome/Brave Android, menu → **Instalar aplicativo / Adicionar à tela inicial**.
 
-O workflow agendado pode atrasar e, em repositórios privados, consome minutos gratuitos da conta (custo zero só enquanto dentro das franquias). Também é possível hospedar site/monitor em servidores próprios. Os dados no feed/site publicado tornam-se públicos.
+**Não é necessário criar `ENABLE_PAGES` nem guardar tokens para publicar o site.** Pages fica desativado enquanto a conta não selecionar a fonte de publicação; o monitor detecta isso e ignora o deploy sem impedir as coletas.
+
+O monitor é agendado para uma execução por hora (o GitHub pode atrasar ou suspender horários). Apenas as fontes autorizadas configuradas produzirão ofertas reais; enquanto vazias, o app exibirá estado vazio e um botão de exemplos fictícios. Os dados enviados ao site ficarão públicos.
 
 ## Segurança e arquitetura
 
