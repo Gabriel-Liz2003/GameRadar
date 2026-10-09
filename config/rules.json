@@ -1,38 +1,23 @@
 {
   "platforms": [
     "switch2",
-    "switch",
-    "ps5",
-    "ps4",
-    "ps3",
-    "ps2",
-    "ps_vita",
-    "psp",
-    "xbox_series",
-    "xbox_one",
-    "xbox360",
-    "3ds",
-    "ds",
-    "wiiu",
-    "wii",
-    "gamecube",
-    "gba",
-    "gbc",
-    "n64",
-    "snes",
-    "nes",
-    "mega_drive"
+    "switch"
   ],
   "conditions": [
     "new",
-    "used"
+    "used",
+    "unknown"
   ],
   "sources": [],
   "max_price": null,
   "include_keywords": [],
   "exclude_keywords": [
     "somente caixa",
-    "sem jogo"
+    "sem jogo",
+    "digital",
+    "console",
+    "controle",
+    "joy-con"
   ],
   "notify_new": true,
   "notify_drop": true,

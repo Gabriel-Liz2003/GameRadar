@@ -93,14 +93,6 @@ class GameRadarTests(unittest.TestCase):
             self.assertEqual(json.loads((root/"data/feed.json").read_text())["offers"],[])
 
 
-    def test_retro_classification(self):
-        names={"3ds":"Pokémon Ultra Sun Nintendo 3DS", "wii":"Super Mario Galaxy Nintendo Wii",
-               "ps3":"Demon Souls PS3", "xbox360":"Fable Xbox 360",
-               "gba":"Pokémon Emerald Game Boy Advance"}
-        for plat,title in names.items():
-            with self.subTest(plat=plat):
-                self.assertEqual(normalize(SOURCE,dict(ITEM,title=title))["platform"],plat)
-
     def test_price_history(self):
         state={"records":{},"initialized_sources":[],"pending":[],"alert_log":[]}
         item=normalize(SOURCE,ITEM);process(state,[item],["fixture"],{})
@@ -137,5 +129,78 @@ class GameRadarTests(unittest.TestCase):
             self.assertEqual(offers[0]["price"],159.9)
             self.assertIn("/items/bulk?ids=",mocked.call_args[0][0])
         with self.assertRaises(ValueError):ml_items(["../../local"],"valid-token")
+
+
+    def test_switch_games_only(self):
+        from gameradar.core import is_physical_game
+        approved=[
+            "Super Mario Odyssey Nintendo Switch usado",
+            "Pokemon Legends Z-A Nintendo Switch 2 lacrado",
+            "Jogo Mario Kart 8 para console Nintendo Switch físico",
+            "Donkey Kong Bananza Switch 2 Game-Key Card",
+            "Zelda Breath of The Wild Nintendo Switch",
+        ]
+        blocked=[
+            "Console Nintendo Switch 2 + Mario Kart World",
+            "Nintendo Switch 2 256GB console",
+            "Console Nintendo Switch OLED 64GB",
+            "Joy-Con Nintendo Switch 2",
+            "Case para Nintendo Switch jogo",
+            "Cartão microSD Express Nintendo Switch 2 256 GB",
+            "Nintendo Switch 2 Mario Kart World digital",
+            "Jogo Zelda PS5 Nintendo Switch compatível",
+            "Mario Kart 8 Nintendo Switch mídia digital",
+            "Amiibo Zelda Nintendo Switch",
+        ]
+        for name in approved:
+            with self.subTest(name=name):
+                self.assertTrue(is_physical_game(name))
+                self.assertIsNotNone(normalize(SOURCE,dict(ITEM,title=name)))
+        for name in blocked:
+            with self.subTest(name=name):
+                self.assertFalse(is_physical_game(name))
+                self.assertIsNone(normalize(SOURCE,dict(ITEM,title=name)))
+
+    def test_only_two_platforms(self):
+        from gameradar.core import P
+        self.assertEqual(P,("switch2","switch"))
+        self.assertIsNone(normalize(SOURCE,dict(ITEM,title="Super Mario 3D Land Nintendo 3DS")))
+        self.assertIsNone(normalize(SOURCE,dict(ITEM,title="Astro Bot PS5")))
+
+    def test_shopee_mapping(self):
+        from gameradar.core import shopee_affiliate
+        from unittest.mock import patch
+        payload={"productOfferV2":{"nodes":[
+            {"itemId":42,"shopId":101,"productName":"Mario Kart World Nintendo Switch 2 lacrado",
+             "priceMin":"R$ 349,90","productLink":"https://shopee.com.br/test",
+             "imageUrl":"https://example.org/box.png","shopName":"Parceira"},
+            {"itemId":44,"shopId":101,"productName":"Nintendo Switch 2 Console 256GB",
+             "priceMin":"2699.00","productLink":"https://shopee.com.br/console"},
+            {"itemId":45,"shopId":101,"productName":"Minecraft Nintendo Switch digital",
+             "priceMin":"40.00","productLink":"https://shopee.com.br/digital"},
+            ],"pageInfo":{"hasNextPage":False}}}
+        with patch("gameradar.core.shopee_graphql",return_value=payload) as mocked:
+            a=shopee_affiliate({"queries":["jogo switch 2"],"pages":2},"app-id","secret")
+        self.assertEqual(len(a),1)
+        self.assertEqual(a[0]["platform"],"switch2")
+        self.assertEqual(a[0]["price"],349.9)
+        self.assertIn("Parceira",a[0]["source"])
+        self.assertEqual(mocked.call_count,1)
+
+    def test_shopee_authorization_signature(self):
+        from gameradar.core import shopee_graphql
+        from unittest.mock import patch
+        class Response:
+            def __enter__(self):return self
+            def __exit__(self,*args):return False
+            def read(self,n):return b'{"data":{"productOfferV2":{}}}'
+        with patch("gameradar.core.time.time",return_value=1704067200),patch("gameradar.core.urlopen",return_value=Response()) as mocked:
+            data=shopee_graphql({"query":"{ ping }"},"55","mysecret")
+        self.assertIn("productOfferV2",data)
+        req=mocked.call_args[0][0]
+        import hashlib
+        expected=hashlib.sha256(("55"+"1704067200"+req.data.decode()+"mysecret").encode()).hexdigest()
+        self.assertEqual(req.get_header("Authorization"),f"SHA256 Credential=55, Timestamp=1704067200, Signature={expected}")
+
 
 if __name__=="__main__": unittest.main()

@@ -1,16 +1,18 @@
 "use strict";
-const PLATFORMS={switch2:"Switch 2",switch:"Switch",ps5:"PS5",ps4:"PS4",ps3:"PS3",ps2:"PS2",ps_vita:"PS Vita",psp:"PSP",xbox_series:"Xbox Series",xbox_one:"Xbox One",xbox360:"Xbox 360","3ds":"3DS",ds:"DS",wiiu:"Wii U",wii:"Wii",gamecube:"GameCube",gba:"GBA",gbc:"Game Boy",n64:"N64",snes:"SNES",nes:"NES",mega_drive:"Mega Drive"};
+const PLATFORMS={switch2:"Switch 2",switch:"Switch"};
 const EXAMPLES=[
 {id:"demo-1",title:"Pokémon Legends: Z-A Nintendo Switch 2 lacrado — exemplo",platform:"switch2",condition:"new",price:289.90,source:"LOJA FICTÍCIA",source_id:"demo",url:"https://example.com",image:null,location:"Brasil",first_seen:new Date().toISOString()},
-{id:"demo-2",title:"Zelda Tears of the Kingdom Nintendo Switch usado — exemplo",platform:"switch",condition:"used",price:189.90,source:"CLASSIFICADO FICTÍCIO",source_id:"demo",url:"https://example.com",image:null,location:"Santa Catarina",first_seen:new Date().toISOString()},
-{id:"demo-3",title:"Astro Bot PS5 novo — exemplo",platform:"ps5",condition:"new",price:149.90,source:"LOJA FICTÍCIA",source_id:"demo",url:"https://example.com",image:null,location:"São Paulo",first_seen:new Date().toISOString()}
+{id:"demo-2",title:"Zelda Tears of the Kingdom Nintendo Switch usado — exemplo",platform:"switch",condition:"used",price:189.90,source:"CLASSIFICADO FICTÍCIO",source_id:"demo",url:"https://example.com",image:null,location:"Santa Catarina",first_seen:new Date().toISOString()}
 ];
 const q=s=>document.querySelector(s);
-const values={platforms:Object.keys(PLATFORMS),search:"",location:"",source:"",maxPrice:"",newCheck:true,usedCheck:true,unknownCheck:false,sort:"recent",onlyFavorites:false};
+const values={platforms:Object.keys(PLATFORMS),search:"",location:"",source:"",maxPrice:"",newCheck:true,usedCheck:true,unknownCheck:true,sort:"recent",onlyFavorites:false};
 function stored(key,def){try{return JSON.parse(localStorage.getItem(key))||def}catch{return def}}
 let filters={...values,...stored("gr-filter-v1",{})};
-if(!Array.isArray(filters.platforms))filters.platforms=Object.keys(PLATFORMS);
-if(filters.platforms.length===6 && ["switch2","switch","ps5","ps4","xbox_series","xbox_one"].every(p=>filters.platforms.includes(p)))filters.platforms=Object.keys(PLATFORMS);
+// Migração das preferências anteriores que continham PS/Xbox/retrô.
+filters.platforms=Array.isArray(filters.platforms)?filters.platforms.filter(p=>Object.hasOwn(PLATFORMS,p)):Object.keys(PLATFORMS);
+if(filters.platforms.length===0)filters.platforms=Object.keys(PLATFORMS);
+filters.unknownCheck=true;
+
 let favorites=stored("gr-favorites-v1",[]);
 if(!Array.isArray(favorites))favorites=[];
 let feed={offers:[],sources_ok:0,sources_configured:0,health:[],updated_at:null};
@@ -50,7 +52,7 @@ function init(){
  q("#more").onclick=()=>{limit+=36;render()};
  q("#showDemo").onclick=()=>{demo=!demo;render()};
  q("#toggleDemo").onclick=()=>{demo=!demo;render()};
- q("#about").onclick=()=>modal("Como funciona","O GameRadar coleta anúncios de fontes JSON/RSS oficialmente disponibilizadas ou inventários de vendedores que autorizaram o aplicativo do Mercado Livre.\n\nA primeira coleta registra os anúncios sem avisar sobre todos eles. Nas verificações seguintes, detecta anúncios novos e quedas de preço. O GitHub Actions salva os resultados e usa o ntfy para alertar.\n\nO painel não pesquisa todos os anúncios da Amazon, Shopee, OLX ou Mercado Livre sem credenciais e permissão.");
+ q("#about").onclick=()=>modal("Como funciona","O GameRadar acompanha exclusivamente jogos físicos de Nintendo Switch e Switch 2. Os anúncios vêm de feeds autorizados, da API de afiliados da Shopee (quando houver credenciais) e de vendedores do Mercado Livre que autorizaram o acesso.\n\nA primeira coleta registra os preços sem gerar alertas em massa. Depois, o monitor identifica anúncios novos e quedas de preço. As notificações são enviadas pelo ntfy.\n\nO aplicativo não vasculha automaticamente toda a OLX, Amazon ou Mercado Livre sem API e autorização.");
  q("#notifications").onclick=()=>modal("Ativar notificações no Android","1. Instale o aplicativo ntfy no Android.\n2. Gere um tópico longo e aleatório com Python: import secrets; print('gameradar-'+secrets.token_urlsafe(24)).\n3. Inscreva-se nesse tópico no ntfy.\n4. No GitHub, configure o secret NTFY_TOPIC com o tópico criado.\n5. Edite config/rules.json para filtros de alertas. O primeiro scan da fonte é silencioso.\n\nNão compartilhe o tópico: qualquer pessoa que descubra um tópico público pode lê-lo.");
  q("#rules").onclick=()=>{
    const cfg={platforms:filters.platforms,conditions:[...(filters.newCheck?["new"]:[]),...(filters.usedCheck?["used"]:[]),...(filters.unknownCheck?["unknown"]:[])],
@@ -89,7 +91,7 @@ async function load(manual=false){
   q("#notice").textContent="Não foi possível carregar o feed. Para abrir localmente, execute um servidor HTTP; não use file://. Erro: "+err.message;
   q("#notice").className="notice show error";
  }
- const ids=[...new Set(feed.offers.map(o=>o.source_id).filter(Boolean))];
+ const ids=[...new Set(feed.offers.filter(o=>Object.hasOwn(PLATFORMS,o.platform)).map(o=>o.source_id).filter(Boolean))];
  const select=q("#source");select.replaceChildren();
  const opt=document.createElement("option");opt.value="";opt.textContent="Todas as fontes";select.append(opt);
  for(const id of ids){
@@ -130,16 +132,19 @@ function card(item){
  bottom.append(tm,link);body.append(plat,h,seller,priceEl,shipping);if(trend.textContent)body.append(trend);body.append(bottom);article.append(picture,body);return article;
 }
 function render(){
- const offers=demo?EXAMPLES:(feed.offers||[]).filter(o=>o.available!==false);
+ const offers=demo?EXAMPLES:(feed.offers||[]).filter(o=>o.available!==false&&Object.hasOwn(PLATFORMS,o.platform));
  q("#allCount").textContent=offers.length;
  q("#lowest").textContent=offers.length?brl(Math.min(...offers.map(o=>o.price))):"—";
  q("#sourcesOk").textContent=demo?"—":String(feed.sources_ok||0);
  q("#lastUpdate").textContent=demo?"Dados fictícios":feed.updated_at?"Atualizado "+dateAgo(feed.updated_at):"Aguardando coleta";
- q("#feedStatus").textContent=demo?"Modo exemplo":feed.sources_ok?"Fontes online":feed.sources_configured?"Fontes com falha":"Sem fontes conectadas";
+ q("#feedStatus").textContent=demo?"Modo exemplo":feed.sources_ok?"Fontes online":feed.sources_configured?"Fontes com falha":"Aguardando fontes";
  q("#feedStatus").classList.toggle("ok",!demo&&feed.sources_ok>0);
  if(demo){q("#notice").textContent="MODO DEMONSTRAÇÃO: anúncios e preços fictícios. Volte aos dados reais usando o botão abaixo.";q("#notice").className="notice show"}
  else if(!feed.sources_configured){q("#notice").textContent="O monitor está pronto, mas ainda não há uma fonte autorizada conectada. Configure config/sources.json no GitHub. Os anúncios exibidos serão reais somente depois disso.";q("#notice").className="notice show"}
- else if(!feed.sources_ok){q("#notice").textContent="Nenhuma fonte respondeu com sucesso. Confira os logs do workflow no GitHub.";q("#notice").className="notice show error"}
+ else if(!feed.sources_ok && (feed.health||[]).some(h=>h.status==="needs_setup")){
+ q("#notice").textContent="Shopee pronta para ativar: solicite o acesso à API de Afiliados e configure os secrets SHOPEE_APP_ID e SHOPEE_APP_SECRET no GitHub. Enquanto isso, você pode integrar feeds autorizados. Não há ofertas reais sem credenciais.";
+ q("#notice").className="notice show";
+ }else if(!feed.sources_ok){q("#notice").textContent="Nenhuma fonte respondeu com sucesso. Confira os logs do monitor no GitHub.";q("#notice").className="notice show error"}
  else if(feed.health&&feed.health.some(h=>h.status==="error")){q("#notice").textContent="Algumas fontes estão indisponíveis, mas você pode consultar os anúncios coletados anteriormente.";q("#notice").className="notice show error"}
  else{q("#notice").className="notice"}
  let visible=offers.filter(o=>filters.platforms.includes(o.platform))

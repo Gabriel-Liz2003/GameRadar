@@ -1,5 +1,18 @@
 {
   "feeds": [],
   "mercadolivre_sellers": [],
-  "mercadolivre_items": []
+  "mercadolivre_items": [],
+  "shopee_affiliate": {
+    "enabled": true,
+    "queries": [
+      "jogo nintendo switch 2",
+      "jogo nintendo switch",
+      "mario kart switch",
+      "pokemon switch",
+      "zelda switch",
+      "kirby switch"
+    ],
+    "pages": 2,
+    "page_size": 40
+  }
 }

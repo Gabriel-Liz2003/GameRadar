@@ -2,7 +2,7 @@
 from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
-import html, json, os, re, sys, ipaddress
+import html, json, os, re, sys, ipaddress, hashlib, time
 from pathlib import Path
 from urllib.parse import urlsplit, quote
 from urllib.request import Request, build_opener, HTTPRedirectHandler, urlopen
@@ -10,9 +10,38 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 AGENT = "GameRadar/1.0 (feeds autorizados)"
-P = ("switch2","switch","ps5","ps4","ps3","ps2","ps_vita","psp","xbox_series","xbox_one","xbox360","3ds","ds","wiiu","wii","gamecube","gba","gbc","n64","snes","nes","mega_drive")
+P = ("switch2", "switch")
 NS = {"a":"http://www.w3.org/2005/Atom", "g":"http://base.google.com/ns/1.0"}
-EXCLUDE = re.compile(r"\b(?:m[ií]dia\s*digital|digital|jogo\s*digital|c[oó]digo\s*digital|conta\s*(?:prim[aá]ria|secund[aá]ria)|gift\s*card|giftcard|dlc\b|season\s+pass|controle\b|joystick|carregador|capinha|pel[ií]cula|skin\b|adesivo|caixa\s*vazia|capa\s*avulsa|headset|acess[oó]rio|console\s*(?:nintendo|ps[45]|playstation|xbox))\b", re.I)
+# Inclusão estrita de games físicos para Nintendo Switch (1) e Switch 2.
+# Nomes de marketplace não são garantias da mídia: anúncios ambíguos são descartados.
+EXCLUDE = re.compile(
+    r"\b(?:digital|download|code\s*download|c[oó]digo|c[oó]digos|voucher|gift\s*card|"
+    r"giftcard|conta\s*(?:prim[aá]ria|secund[aá]ria)|conta\s*compartilhada|"
+    r"assinatura|membership|online\s*12\s*meses|dlc\b|"
+    r"season\s*pass|expansion\s*pass|expans[aã]o\s+digital|"
+    r"controle|joy[\s-]?con|gamepad|joystick|"
+    r"pel[ií]cula|skin|adesivo|capa\s*protetora|"
+    r"case\s*(?:para|de)\s*(?:nintendo|switch)|bolsa|"
+    r"carregador|carregamento|dock|cabo|suporte|"
+    r"cart[aã]o\s*de\s*mem[oó]ria|micro[\s-]?sd|memory\s*card|"
+    r"amiibo|figura|boneco|action\s*figure|headset|fone|"
+    r"caixa\s*vazia|capa\s*avulsa|capa\s*original\s*sem\s*jogo|"
+    r"sem\s*jogo|apenas\s*caixa|somente\s*caixa|"
+    r"empty\s*case|replacement\s*case|"
+    r"manual\s*avulso|console\s+desbloqueado|"
+    r"desbloqueio|modchip|flashcard)\b", re.I)
+HARDWARE = re.compile(
+    r"\b(?:videogame|video\s*game|consol[e]?|bundle|"
+    r"nintendo\s*switch\s*(?:2\s*)?(?:oled|lite)|"
+    r"(?:switch\s*2|nintendo\s*switch)\s*(?:oled|lite|"
+    r"(?:32|64|128|256|512)\s*gb)|"
+    r"jogo\s*incluso|jogos\s*inclusos|"
+    r"kit\s*(?:switch|nintendo|console)|"
+    r"portable\s*gaming\s*system)\b", re.I)
+OTHER_SYSTEM = re.compile(
+    r"\b(?:ps[2345]|playstation|xbox|steam\s*deck|"
+    r"nintendo\s*(?:3ds|ds|wii|64)|gamecube|wii\s*u)\b", re.I)
+
 
 def now(): return datetime.now(timezone.utc).isoformat(timespec="seconds")
 def read(path, default):
@@ -56,19 +85,30 @@ def money(value):
     try: return round(float(s),2) if 0<float(s)<1e8 else None
     except ValueError: return None
 def platform(title,hint=None):
-    pats=(("switch2",r"\b(?:nintendo\s*)?switch\s*2\b|\bns2\b"),("switch",r"\b(?:nintendo\s*)?switch\b"),("ps5",r"\b(?:ps\s*5|playstation\s*5)\b"),("ps4",r"\b(?:ps\s*4|playstation\s*4)\b"),("xbox_series",r"\bxbox\s*(?:series\s*[xs]|sx)\b"),("xbox_one",r"\bxbox\s*one\b"),("xbox360",r"\bxbox\s*360\b"),
-          ("ps3",r"\b(?:ps\s*3|playstation\s*3)\b"),("ps2",r"\b(?:ps\s*2|playstation\s*2)\b"),
-          ("ps_vita",r"\b(?:ps\s*vita|playstation\s*vita|psvita)\b"),
-          ("psp",r"\bpsp\b"),
-          ("3ds",r"\b(?:nintendo\s*)?3ds\b"),("ds",r"\bnintendo\s*ds\b"),
-          ("wiiu",r"\bwii\s*u\b"),("wii",r"\bwii\b"),
-          ("gamecube",r"\b(?:game\s*cube|gamecube)\b"),
-          ("gba",r"\b(?:game\s*boy\s*advance|gba)\b"),
-          ("gbc",r"\b(?:game\s*boy\s*color|gbc)\b"),
-          ("n64",r"\b(?:nintendo\s*64|n64)\b"),("snes",r"\b(?:super\s*nintendo|snes)\b"),
-          ("nes",r"\b(?:nintendo\s*entertainment\s*system|nes)\b"),
-          ("mega_drive",r"\b(?:mega\s*drive|genesis)\b"))
-    return next((k for k,regex in pats if re.search(regex,title,re.I)), hint if hint in P else None)
+    name=title.casefold()
+    if re.search(r"\b(?:nintendo\s*)?switch\s*2\b|\bns2\b",name):
+        return "switch2"
+    if re.search(r"\b(?:nintendo\s*)?switch\b",name):
+        return "switch"
+    return hint if hint in P else None
+
+def is_physical_game(title):
+    if EXCLUDE.search(title) or OTHER_SYSTEM.search(title):
+        return False
+    hardware=HARDWARE.search(title)
+    if hardware:
+        # "jogo para console Switch" é permitido, mas anúncios de hardware não.
+        if re.search(r"\b(?:videogame|video\s*game|bundle|oled|lite|"
+                     r"jogo\s*incluso|jogos\s*inclusos|desbloqueado)\b",title,re.I):
+            return False
+        if re.search(r"\bconsol[e]?\b",title,re.I) and not re.search(r"\b(?:jogo|game|cartucho|m[ií]dia\s*f[ií]sica)\b",title,re.I):
+            return False
+    if re.search(r"\b(?:256|128|64|32)\s*gb\b",title,re.I) and not re.search(
+        r"\b(?:jogo|cartucho|m[ií]dia\s*f[ií]sica)\b",title,re.I
+    ):
+        return False
+    return True
+
 def condition(raw,title,hint=None):
     v=str(raw or "").lower()
     if v in ("used","usado","seminovo","semi-novo") or re.search(r"\b(usado|seminovo|semi-novo)\b",title,re.I): return "used"
@@ -76,7 +116,7 @@ def condition(raw,title,hint=None):
     return hint if hint in ("new","used") else "unknown"
 def normalize(source,raw):
     title=clean(raw.get("title"))[:220]
-    if not title or EXCLUDE.search(title): return None
+    if not title or not is_physical_game(title): return None
     amount=money(raw.get("price")); url=str(raw.get("url") or "").strip()
     plat=platform(title,source.get("platform_hint"))
     if amount is None or plat is None or not valid_url(url) or str(raw.get("currency") or source.get("currency") or "BRL").upper()!="BRL": return None
@@ -84,6 +124,7 @@ def normalize(source,raw):
     return {"id":str(source["id"])+":"+str(raw.get("id") or url)[:300], "title":title,
             "platform":plat,"condition":condition(raw.get("condition"),title,source.get("condition_hint")),
             "price":amount,"shipping":money(raw.get("shipping")) if raw.get("shipping") is not None else None,
+            "physical_format":"game_key_card" if re.search(r"game[\s-]?key\s*card|cart[aã]o\s*chave",title,re.I) else "physical",
             "url":url,"image":image,"currency":"BRL","location":clean(raw.get("location"))[:100] or None,
             "source":source.get("name",source["id"]),"source_id":source["id"]}
 def xt(e,path):
@@ -162,6 +203,68 @@ def ml_items(ids,token):
             if offer:out.append(offer)
     return out
 
+def shopee_graphql(payload, app_id, secret):
+    """Consulta a API Shopee Affiliate com assinatura oficial SHA256.
+
+    Exige habilitação do afiliado; sem credenciais não acessa anúncios.
+    """
+    ts=str(int(time.time()))
+    data=json.dumps(payload,ensure_ascii=False,separators=(",",":")).encode("utf-8")
+    signature=hashlib.sha256((app_id+ts+data.decode("utf-8")+secret).encode("utf-8")).hexdigest()
+    auth=f"SHA256 Credential={app_id}, Timestamp={ts}, Signature={signature}"
+    req=Request("https://open-api.affiliate.shopee.com.br/graphql",data=data,
+                headers={"Content-Type":"application/json","Authorization":auth,
+                         "User-Agent":AGENT},method="POST")
+    with urlopen(req,timeout=22) as response:
+        content=response.read(3*1024*1024+1)
+        if len(content)>3*1024*1024: raise ValueError("Resposta Shopee excede 3MB")
+    result=json.loads(content)
+    if result.get("errors"):
+        raise ValueError("Shopee API: "+str(result["errors"][0].get("message","erro"))[:130])
+    return result.get("data") or {}
+
+def shopee_affiliate(config, app_id, secret):
+    """Pesquisa produtos elegíveis à afiliação, não o catálogo inteiro da Shopee.
+
+    A classificação conservadora retém apenas jogos físicos de Switch e Switch 2.
+    """
+    if not app_id or not secret:
+        raise ValueError("Credenciais SHOPEE_APP_ID / SHOPEE_APP_SECRET ausentes")
+    cfg=config or {}
+    keywords=cfg.get("queries") or ["jogo nintendo switch", "jogo nintendo switch 2"]
+    if not isinstance(keywords,list): raise ValueError("queries deve ser uma lista")
+    page_size=max(1,min(int(cfg.get("page_size",40)),100))
+    pages=max(1,min(int(cfg.get("pages",2)),5))
+    src={"id":"shopee-affiliate","name":"Shopee"}
+    all_items={}
+    for word in keywords[:12]:
+        if not isinstance(word,str) or not 2<=len(word)<=65: raise ValueError("Busca Shopee inválida")
+        for page in range(1,pages+1):
+            keyword=json.dumps(word,ensure_ascii=False)
+            query=(
+                "{ productOfferV2(keyword: "+keyword+
+                f", listType: 0, sortType: 1, page: {page}, limit: {page_size}) "+
+                "{ nodes { itemId productName productLink offerLink imageUrl "
+                "priceMin priceMax shopId shopName } pageInfo { hasNextPage } } }"
+            )
+            product=(shopee_graphql({"query":query},app_id,secret).get("productOfferV2") or {})
+            nodes=product.get("nodes") or []
+            if not isinstance(nodes,list): raise ValueError("Resposta Shopee inválida")
+            for raw in nodes:
+                if not isinstance(raw,dict):continue
+                shop=raw.get("shopId")
+                item=raw.get("itemId")
+                if shop is None or item is None: continue
+                o=normalize(src,{"id":str(shop)+":"+str(item),
+                    "title":raw.get("productName"),
+                    "url":raw.get("offerLink") or raw.get("productLink"),
+                    "image":raw.get("imageUrl"),"price":raw.get("priceMin")})
+                if o:
+                    o["source"]="Shopee · "+clean(raw.get("shopName") or "Loja")[:50]
+                    all_items[o["id"]]=o
+            if not (product.get("pageInfo") or {}).get("hasNextPage"): break
+    return list(all_items.values())
+
 def matches(o,rules):
     if o["platform"] not in rules.get("platforms",P) or o["condition"] not in rules.get("conditions",["new","used"]): return False
     if rules.get("sources") and o["source_id"] not in rules["sources"]: return False
@@ -202,12 +305,28 @@ def collect(root=ROOT):
     root=Path(root); sources=read(root/"config/sources.json",{"feeds":[],"mercadolivre_sellers":[]})
     rules=read(root/"config/rules.json",{});state=read(root/"data/state.json",{})
     # Sem fontes cadastradas, não gerar commits de atualização vazios a cada hora.
-    if not sources.get("feeds") and not sources.get("mercadolivre_sellers") and not sources.get("mercadolivre_items"):
+    if not sources.get("feeds") and not sources.get("mercadolivre_sellers") and not sources.get("mercadolivre_items") and not sources.get("shopee_affiliate",{}).get("enabled"):
         empty={"version":1,"updated_at":None,"sources_configured":0,"sources_ok":0,"health":[],"offers":[]}
         if read(root/"data/feed.json",None)!=empty: write(root/"data/feed.json",empty)
         print("GameRadar pronto. Nenhuma fonte autorizada conectada.")
         return 0
     observed=[];ok=[];health=[]
+    scfg=sources.get("shopee_affiliate") or {}
+    if scfg.get("enabled",False):
+        app_id=os.getenv("SHOPEE_APP_ID","").strip()
+        secret=os.getenv("SHOPEE_APP_SECRET","").strip()
+        if not app_id or not secret:
+            health.append({"source":"Shopee • Afiliados","status":"needs_setup",
+                           "detail":"Cadastre SHOPEE_APP_ID e SHOPEE_APP_SECRET nos secrets do GitHub"})
+        else:
+            try:
+                offers=shopee_affiliate(scfg,app_id,secret)
+                observed.extend(offers);ok.append("shopee-affiliate")
+                health.append({"source":"Shopee • Afiliados","status":"ok","count":len(offers)})
+            except Exception as exc:
+                print("Erro Shopee:",exc,file=sys.stderr)
+                health.append({"source":"Shopee • Afiliados","status":"error","detail":str(exc)[:130]})
+
     for s in sources.get("feeds",[]):
         if not s.get("enabled",True): continue
         try:
@@ -243,12 +362,12 @@ def collect(root=ROOT):
                 old["available"]=False
     state["last_check"]=now()
     visible=sorted(state.get("records",{}).values(),key=lambda x:x.get("last_seen",""),reverse=True)[:1500]
-    output={"version":1,"updated_at":state["last_check"],"sources_configured":len([s for s in sources.get("feeds",[]) if s.get("enabled",True)])+len(sources.get("mercadolivre_sellers",[]))+(1 if watched else 0),
+    output={"version":1,"updated_at":state["last_check"],"sources_configured":len([s for s in sources.get("feeds",[]) if s.get("enabled",True)])+len(sources.get("mercadolivre_sellers",[]))+(1 if watched else 0)+(1 if scfg.get("enabled",False) else 0),
             "sources_ok":len(ok),"health":health,
             "offers":[{k:v for k,v in o.items() if k!="anchor_price"} for o in visible]}
     write(root/"data/state.json",state);write(root/"data/feed.json",output)
     print(len(unique),"anúncios coletados,",len(events),"eventos,",len(state["pending"]),"alertas pendentes.")
-    return 1 if health and not ok else 0
+    return 1 if health and not ok and any(x.get("status")=="error" for x in health) else 0
 def brl(n): return "R$ "+f"{n:,.2f}".replace(",","_").replace(".",",").replace("_",".")
 def ntfy(events,topic):
     if not re.fullmatch(r"[a-zA-Z0-9_-]{16,100}",topic or ""): raise ValueError("NTFY_TOPIC inválido")
