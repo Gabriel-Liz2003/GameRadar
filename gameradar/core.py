@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 AGENT = "GameRadar/1.0 (feeds autorizados)"
-P = ("switch2","switch","ps5","ps4","xbox_series","xbox_one")
+P = ("switch2","switch","ps5","ps4","ps3","ps2","ps_vita","psp","xbox_series","xbox_one","xbox360","3ds","ds","wiiu","wii","gamecube","gba","gbc","n64","snes","nes","mega_drive")
 NS = {"a":"http://www.w3.org/2005/Atom", "g":"http://base.google.com/ns/1.0"}
 EXCLUDE = re.compile(r"\b(?:m[ií]dia\s*digital|digital|jogo\s*digital|c[oó]digo\s*digital|conta\s*(?:prim[aá]ria|secund[aá]ria)|gift\s*card|giftcard|dlc\b|season\s+pass|controle\b|joystick|carregador|capinha|pel[ií]cula|skin\b|adesivo|caixa\s*vazia|capa\s*avulsa|headset|acess[oó]rio|console\s*(?:nintendo|ps[45]|playstation|xbox))\b", re.I)
 
@@ -56,7 +56,18 @@ def money(value):
     try: return round(float(s),2) if 0<float(s)<1e8 else None
     except ValueError: return None
 def platform(title,hint=None):
-    pats=(("switch2",r"\b(?:nintendo\s*)?switch\s*2\b|\bns2\b"),("switch",r"\b(?:nintendo\s*)?switch\b"),("ps5",r"\b(?:ps\s*5|playstation\s*5)\b"),("ps4",r"\b(?:ps\s*4|playstation\s*4)\b"),("xbox_series",r"\bxbox\s*(?:series\s*[xs]|sx)\b"),("xbox_one",r"\bxbox\s*one\b"))
+    pats=(("switch2",r"\b(?:nintendo\s*)?switch\s*2\b|\bns2\b"),("switch",r"\b(?:nintendo\s*)?switch\b"),("ps5",r"\b(?:ps\s*5|playstation\s*5)\b"),("ps4",r"\b(?:ps\s*4|playstation\s*4)\b"),("xbox_series",r"\bxbox\s*(?:series\s*[xs]|sx)\b"),("xbox_one",r"\bxbox\s*one\b"),("xbox360",r"\bxbox\s*360\b"),
+          ("ps3",r"\b(?:ps\s*3|playstation\s*3)\b"),("ps2",r"\b(?:ps\s*2|playstation\s*2)\b"),
+          ("ps_vita",r"\b(?:ps\s*vita|playstation\s*vita|psvita)\b"),
+          ("psp",r"\bpsp\b"),
+          ("3ds",r"\b(?:nintendo\s*)?3ds\b"),("ds",r"\bnintendo\s*ds\b"),
+          ("wiiu",r"\bwii\s*u\b"),("wii",r"\bwii\b"),
+          ("gamecube",r"\b(?:game\s*cube|gamecube)\b"),
+          ("gba",r"\b(?:game\s*boy\s*advance|gba)\b"),
+          ("gbc",r"\b(?:game\s*boy\s*color|gbc)\b"),
+          ("n64",r"\b(?:nintendo\s*64|n64)\b"),("snes",r"\b(?:super\s*nintendo|snes)\b"),
+          ("nes",r"\b(?:nintendo\s*entertainment\s*system|nes)\b"),
+          ("mega_drive",r"\b(?:mega\s*drive|genesis)\b"))
     return next((k for k,regex in pats if re.search(regex,title,re.I)), hint if hint in P else None)
 def condition(raw,title,hint=None):
     v=str(raw or "").lower()
@@ -126,6 +137,31 @@ def ml_seller(seller,token):
                                  "price":body.get("price"),"condition":body.get("condition"),"image":image})
             if offer: out.append(offer)
     return out
+def ml_items(ids,token):
+    """Consulta itens específicos na API oficial do Mercado Livre, mediante token válido.
+    Não é busca geral do marketplace; serve para seguir URLs/IDs conhecidos.
+    """
+    if not token: raise ValueError("ML_ACCESS_TOKEN não configurado")
+    valid=[]
+    for item in ids:
+        value=str(item).upper().strip()
+        if not re.fullmatch(r"ML[A-Z]{1,2}[0-9]{5,20}",value): raise ValueError("ID do Mercado Livre inválido: "+value[:30])
+        valid.append(value)
+    if len(valid)>100: raise ValueError("Limite de 100 itens acompanhados")
+    src={"id":"ml-watch","name":"Mercado Livre • Acompanhados"}
+    out=[]
+    for off in range(0,len(valid),20):
+        response=json.loads(fetch("https://api.mercadolibre.com/items/bulk?ids="+quote(",".join(valid[off:off+20]),safe=","),token))
+        if not isinstance(response,list): raise ValueError("Resposta de itens inesperada")
+        for item in response:
+            body=item.get("body") or {}
+            if int(item.get("code",item.get("status_code",0)))!=200 or body.get("status")!="active": continue
+            image=(body.get("pictures") or [{}])[0].get("secure_url") or body.get("thumbnail")
+            offer=normalize(src,{"id":body.get("id"),"title":body.get("title"),"url":body.get("permalink"),
+                                 "price":body.get("price"),"condition":body.get("condition"),"image":image})
+            if offer:out.append(offer)
+    return out
+
 def matches(o,rules):
     if o["platform"] not in rules.get("platforms",P) or o["condition"] not in rules.get("conditions",["new","used"]): return False
     if rules.get("sources") and o["source_id"] not in rules["sources"]: return False
@@ -139,7 +175,7 @@ def process(state,observed,ok,rules,at=None):
     for item in observed:
         old=records.get(item["id"]); p=item["price"]
         if old is None:
-            records[item["id"]]=dict(item,first_seen=at,last_seen=at,anchor_price=p)
+            records[item["id"]]=dict(item,first_seen=at,last_seen=at,anchor_price=p,first_price=p,lowest_price=p,price_history=[{"at":at,"price":p}],available=True)
             if item["source_id"] in baseline and rules.get("notify_new",True) and matches(item,rules):
                 events.append({"id":item["id"]+":new","type":"new","offer":item})
         else:
@@ -150,7 +186,12 @@ def process(state,observed,ok,rules,at=None):
                 events.append({"id":item["id"]+f":drop:{p:.2f}","type":"drop","offer":item,"from_price":anchor})
                 anchor=p
             elif p>anchor: anchor=p
-            records[item["id"]]=dict(item,first_seen=old.get("first_seen",at),last_seen=at,anchor_price=anchor)
+            history=list(old.get("price_history") or [{"at":old.get("first_seen",at),"price":old.get("first_price",old["price"])}])
+            if p!=old["price"]:history.append({"at":at,"price":p})
+            records[item["id"]]=dict(item,first_seen=old.get("first_seen",at),last_seen=at,
+                  anchor_price=anchor,first_price=old.get("first_price",old["price"]),
+                  lowest_price=min(old.get("lowest_price",old["price"]),p),
+                  price_history=history[-25:],available=True)
     state["initialized_sources"]=sorted(baseline|set(ok))
     if len(records)>15000: state["records"]=dict(sorted(records.items(),key=lambda x:x[1]["last_seen"],reverse=True)[:15000])
     known=set(state.setdefault("alert_log",[]))|{e["id"] for e in state.setdefault("pending",[])}
@@ -169,6 +210,15 @@ def collect(root=ROOT):
         except Exception as exc:
             health.append({"source":s.get("name",s.get("id")),"status":"error","detail":str(exc)[:130]})
             print("Erro fonte",s.get("id"),exc,file=sys.stderr)
+    watched=sources.get("mercadolivre_items",[])
+    if watched:
+        try:
+            items=ml_items(watched,os.getenv("ML_ACCESS_TOKEN",""))
+            observed.extend(items);ok.append("ml-watch")
+            health.append({"source":"Mercado Livre • Acompanhados","status":"ok","count":len(items)})
+        except Exception as exc:
+            health.append({"source":"Mercado Livre • Acompanhados","status":"error","detail":str(exc)[:130]})
+            print("Erro ML itens:",exc,file=sys.stderr)
     for seller in sources.get("mercadolivre_sellers",[]):
         try:
             items=ml_seller(seller,os.getenv("ML_ACCESS_TOKEN",""));observed.extend(items)
@@ -177,10 +227,19 @@ def collect(root=ROOT):
             health.append({"source":"Mercado Livre "+str(seller),"status":"error","detail":str(exc)[:130]})
             print("Erro ML",seller,exc,file=sys.stderr)
     unique={o["id"]:o for o in observed};events=process(state,list(unique.values()),ok,rules)
+    # Apenas feeds declarados como snapshots completos permitem identificar indisponíveis.
+    # Feeds de novidades/listas parciais não eliminam anúncios que não retornaram nesta coleta.
+    full=set(src["id"] for src in sources.get("feeds",[])
+             if src.get("enabled",True) and src.get("complete_snapshot",False) and src["id"] in ok)
+    if full:
+        for old_id, old in state.get("records",{}).items():
+            if old.get("source_id") in full and old_id not in unique:
+                old["available"]=False
     state["last_check"]=now()
     visible=sorted(state.get("records",{}).values(),key=lambda x:x.get("last_seen",""),reverse=True)[:1500]
-    output={"version":1,"updated_at":state["last_check"],"sources_configured":len([s for s in sources.get("feeds",[]) if s.get("enabled",True)])+len(sources.get("mercadolivre_sellers",[])),
-            "sources_ok":len(ok),"health":health,"offers":[{k:v for k,v in o.items() if k!="anchor_price"} for o in visible]}
+    output={"version":1,"updated_at":state["last_check"],"sources_configured":len([s for s in sources.get("feeds",[]) if s.get("enabled",True)])+len(sources.get("mercadolivre_sellers",[]))+(1 if watched else 0),
+            "sources_ok":len(ok),"health":health,
+            "offers":[{k:v for k,v in o.items() if k!="anchor_price"} for o in visible]}
     write(root/"data/state.json",state);write(root/"data/feed.json",output)
     print(len(unique),"anúncios coletados,",len(events),"eventos,",len(state["pending"]),"alertas pendentes.")
     return 1 if health and not ok else 0
@@ -190,7 +249,7 @@ def ntfy(events,topic):
     lines=[("NOVO" if e["type"]=="new" else "CAIU")+" • "+e["offer"]["title"][:60]+" • "+brl(e["offer"]["price"]) for e in events[:10]]
     if len(events)>10: lines.append("+"+str(len(events)-10)+" anúncios; abra GameRadar para ver")
     payload=json.dumps({"topic":topic,"title":"🎮 GameRadar • "+str(len(events))+" alertas",
-        "message":"\n".join(lines)[:3800],"click":events[0]["offer"]["url"]},ensure_ascii=False).encode()
+        "message":"\n".join(lines)[:3800],"click":"https://gabriel-liz2003.github.io/GameRadar/"},ensure_ascii=False).encode()
     with urlopen(Request("https://ntfy.sh/",data=payload,headers={"Content-Type":"application/json"},method="POST"),timeout=20) as r:
         if r.status>=300: raise RuntimeError("ntfy HTTP "+str(r.status))
 def notify(root=ROOT,topic=None,publisher=ntfy):
