@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 AGENT = "GameRadar/1.0 (feeds autorizados)"
 P = ("switch2","switch","ps5","ps4","xbox_series","xbox_one")
 NS = {"a":"http://www.w3.org/2005/Atom", "g":"http://base.google.com/ns/1.0"}
-EXCLUDE = re.compile(r"\b(?:m[ií]dia\s*digital|jogo\s*digital|c[oó]digo\s*digital|conta\s*(?:prim[aá]ria|secund[aá]ria)|gift\s*card|giftcard|dlc\b|season\s+pass|controle\b|joystick|carregador|capinha|pel[ií]cula|skin\b|adesivo|caixa\s*vazia|capa\s*avulsa|headset|acess[oó]rio|console\s*(?:nintendo|ps[45]|playstation|xbox))\b", re.I)
+EXCLUDE = re.compile(r"\b(?:m[ií]dia\s*digital|digital|jogo\s*digital|c[oó]digo\s*digital|conta\s*(?:prim[aá]ria|secund[aá]ria)|gift\s*card|giftcard|dlc\b|season\s+pass|controle\b|joystick|carregador|capinha|pel[ií]cula|skin\b|adesivo|caixa\s*vazia|capa\s*avulsa|headset|acess[oó]rio|console\s*(?:nintendo|ps[45]|playstation|xbox))\b", re.I)
 
 def now(): return datetime.now(timezone.utc).isoformat(timespec="seconds")
 def read(path, default):
