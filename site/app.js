@@ -46,6 +46,7 @@ function init(){
  q("#reload").onclick=()=>load(true);
  q("#more").onclick=()=>{limit+=36;render()};
  q("#showDemo").onclick=()=>{demo=!demo;render()};
+ q("#toggleDemo").onclick=()=>{demo=!demo;render()};
  q("#about").onclick=()=>modal("Como funciona","O GameRadar coleta anúncios de fontes JSON/RSS oficialmente disponibilizadas ou inventários de vendedores que autorizaram o aplicativo do Mercado Livre.\n\nA primeira coleta registra os anúncios sem avisar sobre todos eles. Nas verificações seguintes, detecta anúncios novos e quedas de preço. O GitHub Actions salva os resultados e usa o ntfy para alertar.\n\nO painel não pesquisa todos os anúncios da Amazon, Shopee, OLX ou Mercado Livre sem credenciais e permissão.");
  q("#notifications").onclick=()=>modal("Ativar notificações no Android","1. Instale o aplicativo ntfy no Android.\n2. Gere um tópico longo e aleatório com Python: import secrets; print('gameradar-'+secrets.token_urlsafe(24)).\n3. Inscreva-se nesse tópico no ntfy.\n4. No GitHub, configure o secret NTFY_TOPIC com o tópico criado.\n5. Edite config/rules.json para filtros de alertas. O primeiro scan da fonte é silencioso.\n\nNão compartilhe o tópico: qualquer pessoa que descubra um tópico público pode lê-lo.");
  q("#rules").onclick=()=>{
@@ -147,5 +148,6 @@ function render(){
  q("#emptyTitle").textContent=offers.length?"Nenhum jogo com esses filtros":"Seu radar está vazio";
  q("#emptyText").textContent=offers.length?"Experimente limpar os filtros ou mudar a plataforma.":"Conecte fontes de mídia física autorizadas para receber anúncios reais. É possível ver um exemplo visual.";
  q("#showDemo").textContent=demo?"Voltar aos dados reais":"Ver exemplo visual ↗";
+ q("#toggleDemo").textContent=demo?"← Dados reais":"Ver exemplo";
 }
 init();
