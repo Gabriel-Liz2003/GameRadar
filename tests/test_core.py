@@ -92,4 +92,50 @@ class GameRadarTests(unittest.TestCase):
             self.assertEqual(collect(root),0)
             self.assertEqual(json.loads((root/"data/feed.json").read_text())["offers"],[])
 
+
+    def test_retro_classification(self):
+        names={"3ds":"Pokémon Ultra Sun Nintendo 3DS", "wii":"Super Mario Galaxy Nintendo Wii",
+               "ps3":"Demon Souls PS3", "xbox360":"Fable Xbox 360",
+               "gba":"Pokémon Emerald Game Boy Advance"}
+        for plat,title in names.items():
+            with self.subTest(plat=plat):
+                self.assertEqual(normalize(SOURCE,dict(ITEM,title=title))["platform"],plat)
+
+    def test_price_history(self):
+        state={"records":{},"initialized_sources":[],"pending":[],"alert_log":[]}
+        item=normalize(SOURCE,ITEM);process(state,[item],["fixture"],{})
+        cheaper=dict(item,price=95)
+        process(state,[cheaper],["fixture"],{})
+        record=state["records"][item["id"]]
+        self.assertEqual(record["first_price"],179.9)
+        self.assertEqual(record["lowest_price"],95)
+        self.assertEqual(len(record["price_history"]),2)
+
+    def test_full_snapshot_removes_unavailable(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp); (root/"config").mkdir()
+            cfg={"feeds":[{"id":"fixture","name":"Teste","url":"https://example.org/feed.json",
+              "format":"json","complete_snapshot":True}],"mercadolivre_sellers":[]}
+            (root/"config/sources.json").write_text(json.dumps(cfg))
+            with patch("gameradar.core.feed",side_effect=[[normalize(SOURCE,ITEM)],[]]):
+                collect(root)
+                collect(root)
+            records=json.loads((root/"data/feed.json").read_text())["offers"]
+            self.assertFalse(records[0]["available"])
+
+    def test_ml_specific_items(self):
+        from unittest.mock import patch
+        from gameradar.core import ml_items
+        body={"id":"MLB1234567","title":"Metroid Dread Nintendo Switch usado",
+              "price":159.9,"status":"active","condition":"used",
+              "permalink":"https://www.mercadolivre.com.br/test/item",
+              "pictures":[{"secure_url":"https://example.org/image.jpg"}]}
+        with patch("gameradar.core.fetch",return_value=json.dumps([{"code":200,"body":body}]).encode()) as mocked:
+            offers=ml_items(["MLB1234567"],"valid-token")
+            self.assertEqual(offers[0]["source_id"],"ml-watch")
+            self.assertEqual(offers[0]["price"],159.9)
+            self.assertIn("/items/bulk?ids=",mocked.call_args[0][0])
+        with self.assertRaises(ValueError):ml_items(["../../local"],"valid-token")
+
 if __name__=="__main__": unittest.main()
