@@ -33,6 +33,8 @@ jobs:
         continue-on-error: true
         env:
           ML_ACCESS_TOKEN: ${{ secrets.ML_ACCESS_TOKEN }}
+          SHOPEE_APP_ID: ${{ secrets.SHOPEE_APP_ID }}
+          SHOPEE_APP_SECRET: ${{ secrets.SHOPEE_APP_SECRET }}
       - name: Persistir anúncios e fila ANTES de notificar
         run: |
           git config user.name "github-actions[bot]"
