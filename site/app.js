@@ -30,7 +30,9 @@ function modal(title,body,code){
 }
 function init(){
  q("#platforms").replaceChildren(...Object.entries(PLATFORMS).map(([id,name])=>{
-  const b=document.createElement("button");b.className="chip";b.textContent=name;b.dataset.id=id;
+  const b=document.createElement("button");b.className="chip";b.dataset.id=id;
+  const symbol=document.createElement("span");symbol.className="ch-icon";symbol.setAttribute("aria-hidden","true");symbol.textContent=id==="switch2"?"Ⅱ":id==="switch"?"◖":id==="ps5"?"5":id==="ps4"?"4":id==="xbox_series"?"X":"1";
+  b.append(symbol,document.createTextNode(name));
   b.onclick=()=>{filters.platforms=filters.platforms.includes(id)?filters.platforms.filter(x=>x!==id):[...filters.platforms,id];persist();sync();render()};return b;
  }));
  for(const [el,key] of [["#search","search"],["#location","location"],["#maxPrice","maxPrice"]]){
@@ -56,6 +58,10 @@ function init(){
    notify_new:true,notify_drop:true,min_drop_percent:10,min_drop_brl:15};
    modal("Exportar regras de alertas","Copie o JSON abaixo e substitua o conteúdo de config/rules.json no repositório. Isso controla os avisos no celular. Os filtros do site não atualizam o GitHub automaticamente.",JSON.stringify(cfg,null,2));
  };
+ q("#navHow").onclick=()=>q("#about").click();
+ q("#favoritesNav").onclick=()=>{filters.onlyFavorites=true;persist();sync();render()};
+ q("#setupSource").onclick=()=>modal("Conecte fontes reais","O painel mostra todos os jogos recebidos por fontes autorizadas. No GitHub, abra config/sources.json para cadastrar feeds JSON/RSS permitidos pelo fornecedor ou IDs de vendedores autorizados do Mercado Livre. Após salvar, abra Actions → GameRadar • monitor e execute Run workflow.\n\nOLX, Amazon e Shopee não fornecem busca geral irrestrita sem credenciais e autorização. A integração não está ativada apenas por tornar o repositório público.\n\nAcesse README.md no GitHub para o formato exato de cada fonte.");
+ q("#filterToggle").onclick=()=>{const el=q(".filters"); const value=el.classList.toggle("mobile-open");q("#filterToggle").setAttribute("aria-expanded",String(value));q("#filterToggle").textContent=value?"Recolher −":"Filtros +";};
  q("#close").onclick=()=>q("#modal").close();q("#ok").onclick=()=>q("#modal").close();
  q("#modal").onclick=e=>{if(e.target===q("#modal"))q("#modal").close()};
  q("#copy").onclick=async()=>{try{await navigator.clipboard.writeText(q("#modalCode").textContent);q("#copy").textContent="Copiado ✓"}catch{q("#copy").textContent="Selecione o JSON para copiar"}};
