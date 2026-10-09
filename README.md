@@ -2,6 +2,22 @@
 
 Aplicativo PWA para Android e desktop, com monitoramento por **fontes autorizadas**, filtros, favoritos, detecção de anúncios novos e quedas de preço. Desenvolvido com **Python 3.11+ e JavaScript sem dependências externas**.
 
+
+## Novidades da versão atual
+
+- Interface com identidade visual inspirada nos consoles Nintendo: cores claras, vermelho, filtros horizontais e cards de mídia física.
+- Consoles atuais e retrô: Switch 2, Switch, PS5, PS4, PS3, PS2, PS Vita, PSP, Xbox Series/One/360, 3DS, DS, Wii U, Wii, GameCube, Game Boy Advance/Color, N64, SNES, NES e Mega Drive.
+- Cada anúncio acompanha `first_price`, `lowest_price` e até 25 eventos de `price_history`; o app mostra quedas desde o primeiro preço conhecido.
+- Fontes que entregam um **catálogo completo** podem declarar `complete_snapshot: true` para marcar como indisponíveis anúncios que saíram da listagem. Não use com RSS de novidades ou feeds parciais.
+- `mercadolivre_items`: lista de até 100 IDs de anúncios já conhecidos, mediante `ML_ACCESS_TOKEN` autorizado. Isso **não habilita busca geral**.
+- Coleta não grava estados vazios repetidos quando nenhuma fonte está configurada.
+
+### Situação das integrações
+
+**Nenhuma loja está configurada por padrão**. Isso é intencional: não fornecemos páginas raspadas nem acessos não autorizados. Para monitoramento real, obtenha um feed de produtos permitido por uma loja/parceiro ou credenciais de API com as permissões apropriadas. O monitor não transforma URLs comuns de busca da OLX, Amazon, Shopee ou Mercado Livre em APIs.
+
+Enquanto não houver fontes, a página exibe explicitamente que não há dados reais, com exemplos opcionais claramente fictícios.
+
 ## Funcionalidades prontas
 
 - Painel em português responsivo para instalação como app Android.
@@ -48,7 +64,7 @@ Para fontes protegidas, use a propriedade token_env com o **nome** de uma variá
 
 ### Mercado Livre
 
-A API oficial permite listar inventário de **vendedores autorizados** por /users/{seller_id}/items/search e /items/bulk. Coloque um ou mais IDs numéricos em mercadolivre_sellers e configure o secret ML_ACCESS_TOKEN. **O token expira em cerca de 6 horas e este projeto não renova automaticamente a sessão OAuth**. Para serviço contínuo, é necessário implantar fluxo seguro de OAuth e renovação de refresh token com rotação. Não tente substituir por /sites/MLB/search: busca ampla pode estar restrita a apps autorizados.
+A API oficial permite listar inventário de **vendedores autorizados** por /users/{seller_id}/items/search e /items/bulk. Coloque um ou mais IDs numéricos em mercadolivre_sellers e configure o secret ML_ACCESS_TOKEN. Se tiver uma lista de anúncios específicos já identificados, coloque seus IDs no campo mercadolivre_items; a consulta desses itens depende da mesma autorização e pode ser bloqueada pela política do seu aplicativo. **O token expira em cerca de 6 horas e este projeto não renova automaticamente a sessão OAuth**. Para serviço contínuo, é necessário implantar fluxo seguro de OAuth e renovação de refresh token com rotação. Não tente substituir por /sites/MLB/search: busca ampla pode estar restrita a apps autorizados.
 
 ### OLX / Shopee / Amazon
 
